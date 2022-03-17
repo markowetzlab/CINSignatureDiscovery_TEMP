@@ -12,10 +12,15 @@
 ## Info:
 ## Here only paths and scripts
 
-BASE="/Users/xxxxx/SignatureDiscovery"
+BASE="/Users/drews01/SignatureDiscovery/CIN_Compendium_Discovery"
 DATA="${BASE}/data"
 SCRIPTS="${BASE}/scripts"
 
+
+## Coming from github, please unpack the raw data
+TCGA="${DATA}/rawdata/split-by-sample"
+mkdir -p $TCGA
+tar xzf ${DATA}/rawdata/penalty70_complete.tar.gz -C $TCGA
 
 
 ##############################################################
@@ -30,7 +35,7 @@ SCRIPTS="${BASE}/scripts"
 # Five filter criteria:
 # a) purity > 40%
 # b) purity < 100% (100% purity is most likely a mistake by ASCAT where it cannot find a solution due to low purity)
-# c) oversegmentation due to low input quality (Kerstin discovered that some samples have spread out logR values; "smearing")
+# c) oversegmentation due to low input quality (We discovered that some samples have spread out logR values; "smearing")
 # d) germline mismatch (rarely mismatch between tumours and control)
 # e) some input have wild logR values (mismatching BAF). These were filtered as they caused large number of CNAs in samples.
 # This was discussed and confirmed in our meeting on Monday 7th of Jan 2019.
@@ -38,7 +43,7 @@ SCRIPTS="${BASE}/scripts"
 
 # Please unpack "penalty70_complete.tar.gz" in the folder "data/rawdata"
 INPUT="rawdata/split-by-sample"
-SUMMARYFILE="metadata/summary.ascatTCGA.penalty70.txt"
+SUMMARYFILE="metadata/Metadata_TCGA_ASCAT_penalty70.txt"
 OUTPUTSEGMENTS="rawdata/split-by-cancer-type"
 OUTPUTMETA="metadata"
 PURITY=0.4
@@ -66,11 +71,11 @@ sbatch ${SCRIPTS}/02_cnprofiles.sh $SCRIPTS $DATA $INFOLDER $OUTFOLDER $CHRSIZES
 INFOLDER="${DATA}/rawdata/split-by-cancer-type"
 FILTDAT="${DATA}/rawdata/combined.ascat.segments.filt"
 OUTDAT="${DATA}/rawdata/combined.ascat.segments.smoothednormals"
-SUMMARYFILE="${DATA}/metadata/summary.ascatTCGA.penalty70.txt"
+SUMMARYFILE="${DATA}/metadata/Metadata_TCGA_ASCAT_penalty70.txt"
 WIGGLE=0.1
 IGNOREDELS="FALSE"
-CORES=10
-MEMORY="40G"
+CORES=5
+MEMORY="20G"
 
 sbatch -N $CORES --mem $MEMORY ${SCRIPTS}/03_Combine_and_smooth.sh $SCRIPTS $INFOLDER $FILTDAT $OUTDAT $SUMMARYFILE $WIGGLE $IGNOREDELS $CORES
 
@@ -90,7 +95,7 @@ OVSIGS="${PREPATH}/feat_sig_mat.rds"
 GEOFFPARAMS="${PREPATH}/component_parameters.rds"
 OLDMETHODS="${BASE}/src/cnsignatures_vanilla/main_functions.R"
 NEWMETHODS="${DATA}/main_functions.R"
-META="${DATA}/metadata/summary.ascatTCGA.penalty70.txt"
+META="${DATA}/metadata/Metadata_TCGA_ASCAT_penalty70.txt"
 OLDCN="${DATA}/validationdata/data_Geoff/data/tcga_CN_features.rds"
 NEWRAW="${DATA}/rawdata/combined.ascat.segments.filt.rds"
 NEWPLUS="${DATA}/rawdata/combined.ascat.segments.smoothednormals.rds"
@@ -107,7 +112,7 @@ ABSEXP="${DATA}/${CHAPTER1FOLDER}/Export-matrix_OV_Sigs_on_TCGA-OV_rawExposures_
 NORMEXP="${DATA}/${CHAPTER1FOLDER}/Export-matrix_OV_Sigs_on_TCGA-OV_12112019.rds"
 OVSIGS="${DATA}/Geoffs_data/feat_sig_mat.rds"
 DETECTIONLIMIT=0.05
-META="${DATA}/metadata/summary.ascatTCGA.penalty70.txt"
+META="${DATA}/metadata/Metadata_TCGA_ASCAT_penalty70.txt"
 CLINICALDATA="${DATA}/metadata/metadata_CNA_12K.RDS"
 OUTPATH="${DATA}/${CHAPTER1FOLDER}"
 
@@ -115,7 +120,7 @@ sbatch ${SCRIPTS}/12_Quantify_Detection_Limit_of_CIN.sh $SCRIPTS $ABSEXP $NORMEX
 
 
 ### Step 1.3: Detect CIN
-META="${DATA}/metadata/summary.ascatTCGA.penalty70.txt"
+META="${DATA}/metadata/Metadata_TCGA_ASCAT_penalty70.txt"
 # Samples with CNAs > 19 (Minimum of 20 CNAs) have detectable CIN
 CINTHRESHOLD=19
 NEWPLUS="${DATA}/rawdata/combined.ascat.segments.smoothednormals.rds"
@@ -395,7 +400,7 @@ OUTPUTDIR=$PATHTOFILES
 TRANSPOSED=FALSE
 DECISION="div"
 WHICHK="NULL"
-METADATA="${DATA}/metadata/summary.ascatTCGA.penalty70.txt"
+METADATA="${DATA}/metadata/Metadata_TCGA_ASCAT_penalty70.txt"
 CANCERCOLS="${DATA}/metadata/TCGA_colour_scheme_Lydia.txt"
 
 sbatch ${SCRIPTS}/33_Decide_Pancancer_Signature.sh $SCRIPTS $PATHTOFILES $SIGMATPATTERN $EXPMATPATTERN $LOGPATTERN $corThreshold $OUTPUTDIR $TRANSPOSED $DECISION $WHICHK $METADATA $CANCERCOLS
@@ -419,7 +424,7 @@ CHAPTER2FOLDER="3_Pancancer_Signatures"
 CHAPTER4FOLDER="4_Cancer_specific_Signatures"
 
 ### Step 4.1: Decide which cancers are suitable and split SxC matrix
-METADATA="${DATA}/metadata/summary.ascatTCGA.penalty70.txt"
+METADATA="${DATA}/metadata/Metadata_TCGA_ASCAT_penalty70.txt"
 MINSAMPS=100
 IGNOREBRCASPLIT=TRUE
 SXCMATRIX="${DATA}/${CHAPTER2FOLDER}/3_SxC_uninfPrior.rds"
@@ -492,7 +497,7 @@ corThreshold=0.85
 TRANSPOSED=FALSE
 DECISION="div"
 ALLK="1 2"
-METADATA="${DATA}/metadata/summary.ascatTCGA.penalty70.txt"
+METADATA="${DATA}/metadata/Metadata_TCGA_ASCAT_penalty70.txt"
 CANCERCOLS="${DATA}/metadata/TCGA_colour_scheme_Lydia.txt"
 
 for WHICHK in $ALLK; do
