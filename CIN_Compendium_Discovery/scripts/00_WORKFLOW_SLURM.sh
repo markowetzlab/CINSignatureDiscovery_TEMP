@@ -9,9 +9,7 @@
 ### Intro ###
 #############
 
-## Info:
 ## Here only paths and scripts
-
 BASE="/Users/drews01/SignatureDiscovery/CIN_Compendium_Discovery"
 DATA="${BASE}/data"
 SCRIPTS="${BASE}/scripts"
@@ -21,6 +19,11 @@ SCRIPTS="${BASE}/scripts"
 TCGA="${DATA}/rawdata/split-by-sample"
 mkdir -p $TCGA
 tar xzf ${DATA}/rawdata/penalty70_complete.tar.gz -C $TCGA
+
+
+## Download the repository from previous work
+git clone https://github.com/markowetzlab/CNsignatures ${DATA}/Macintyre2018
+tar xf ${DATA}/Macintyre2018/data.tar -C ${DATA}/Macintyre2018
 
 
 ##############################################################
@@ -89,17 +92,18 @@ sbatch -N $CORES --mem $MEMORY ${SCRIPTS}/03_Combine_and_smooth.sh $SCRIPTS $INF
 CHAPTER1FOLDER="2_OV_signatures_on_TCGA"
 
 ### Step 1.1: Calculate OV exposures
-PREPATH="${DATA}/Geoffs_data/"
+# Please make sure the github repo is downloaded and data.tar is unpacked. See code at the beginning of this script to perform these tasks automatically.
+PREPATH="${DATA}/Macintyre2018/data/"
 OUT="${DATA}/${CHAPTER1FOLDER}"
 OVSIGS="${PREPATH}/feat_sig_mat.rds"
 GEOFFPARAMS="${PREPATH}/component_parameters.rds"
-OLDMETHODS="${BASE}/src/cnsignatures_vanilla/main_functions.R"
-NEWMETHODS="${DATA}/main_functions.R"
+OLDMETHODS="${PREPATH}/main_functions.R"
+NEWMETHODS="${SCRIPTS}/main_functions.R"
 META="${DATA}/metadata/Metadata_TCGA_ASCAT_penalty70.txt"
-OLDCN="${DATA}/validationdata/data_Geoff/data/tcga_CN_features.rds"
+OLDCN="${DATA}/Ovarian_CN_signatures/tcga_CN_features.rds"
 NEWRAW="${DATA}/rawdata/combined.ascat.segments.filt.rds"
 NEWPLUS="${DATA}/rawdata/combined.ascat.segments.smoothednormals.rds"
-DATE="12112019"
+DATE="03172022"
 
 CORES=7
 MEMORY="20G"
@@ -108,9 +112,9 @@ sbatch -N $CORES --mem $MEMORY ${SCRIPTS}/11_Compute_OV_sigs_on_TCGA.sh $SCRIPTS
 
 
 ### Step 1.2: Get CIN threshold
-ABSEXP="${DATA}/${CHAPTER1FOLDER}/Export-matrix_OV_Sigs_on_TCGA-OV_rawExposures_12112019.rds"
-NORMEXP="${DATA}/${CHAPTER1FOLDER}/Export-matrix_OV_Sigs_on_TCGA-OV_12112019.rds"
-OVSIGS="${DATA}/Geoffs_data/feat_sig_mat.rds"
+ABSEXP="${DATA}/${CHAPTER1FOLDER}/Export-matrix_OV_Sigs_on_TCGA-OV_rawExposures_03172022.rds"
+NORMEXP="${DATA}/${CHAPTER1FOLDER}/Export-matrix_OV_Sigs_on_TCGA-OV_03172022.rds"
+OVSIGS="${DATA}/Macintyre2018/data/feat_sig_mat.rds"
 DETECTIONLIMIT=0.05
 META="${DATA}/metadata/Metadata_TCGA_ASCAT_penalty70.txt"
 CLINICALDATA="${DATA}/metadata/metadata_CNA_12K.RDS"
@@ -140,11 +144,11 @@ CHAPTER2FOLDER="3_Pancancer_Signatures"
 
 ### Step 2.1: Extract copy-number features
 # Prepare: Mixture models
-SOURCE="${SCRIPTS}/00_main_functions.R"
+SOURCE="${SCRIPTS}/main_functions.R"
 INPUTFILE="${DATA}/${CHAPTER2FOLDER}/0_TCGA_Segments_dCIN.rds"
 OUTPATH="${DATA}/${CHAPTER2FOLDER}"
 CORES=7
-PREPATH="${DATA}/Geoffs_data/"
+PREPATH="${DATA}/Macintyre2018/data/"
 RMNORM=TRUE
 
 sbatch -N $CORES ${SCRIPTS}/21_ECNF_TCGA.sh $SCRIPTS $SOURCE $INPUTFILE $OUTPATH $CORES $PREPATH $RMNORM
@@ -166,8 +170,8 @@ sbatch ${SCRIPTS}/22_Plot_ECNF.sh $SCRIPTMARKDOWN $INPUTECNF $OUTPATH
 ### Important notes on the different mixture model fits!
 ###
 ### SEGSIZE / CHANGEPOINT / COPYNUMBER (Gaussian mixture models)
-### The three features segsize, changepoint and copynumber have been modelled with a Dirichlet-process Gaussian mixture model using
-### variational inference. For this I have worked together with Michael. The results are in ${CHAPTER2FOLDER}/2_fits_segsize/ and so on.
+### The three features segsize, changepoint and copynumber have been modelled with a Dirichlet-process Gaussian mixture model using variational inference.
+### The results are in scripts/viMixtures and need to be copied into ${CHAPTER2FOLDER}/2_fits_10k_segsize/ and ${CHAPTER2FOLDER}/2_fits_5k_changepoint/.
 ### The result file is a csv file containing all mixtures. The summary script "24_Combine_Mix_Model_Solutions" is filtering the mixtures
 ### by a minimum weight criterion and these components are then being used in script XX to call the sum-of-posterior(-probabilities) for
 ### each event summed over for each sample. The lines underneath are running mclust for segsize, changepoint and copynumber to illustrate
@@ -181,7 +185,7 @@ sbatch ${SCRIPTS}/22_Plot_ECNF.sh $SCRIPTMARKDOWN $INPUTECNF $OUTPATH
 
 ### Intro
 # One job per feature distribution
-PATHMAIN="${SCRIPTS}/00_main_functions.R"
+PATHMAIN="${SCRIPTS}/main_functions.R"
 INPUTECNF="${DATA}/${CHAPTER2FOLDER}/1_tcga_filtered_ecnf.rds"
 OUTPATH="${DATA}/${CHAPTER2FOLDER}"
 
@@ -287,8 +291,8 @@ sbatch ${SCRIPTS}/24_Combine_Mix_Model_Solutions.sh $SCRIPTS $INPUT $FOLDERS $DI
 # Merging criteria:
 # - Closer than 1MB for medium- and large-size elements OR roughly 10% of size OR strong overlap due to large SDs.
 # - For CN roughly closer than 0.1.
-# https://docs.google.com/spreadsheets/d/1GDjr8sJx9FFf_p2DGEczSOKCaYMS3flV6Z133ibO7hE/edit#gid=1432165541
-# See finalScripts/helper_scripts/20191211_Replace_Mixture_Components.R for code
+# See Supplementary Table XX!
+# See scripts/viMixtures/Replace_Mixture_Components.R for code
 
 
 
@@ -311,11 +315,13 @@ sbatch ${SCRIPTS}/31_Calculate_SxC_Matrix.sh $SCRIPTS $INPUTECNF $INPUTMODELS $O
 
 ### Step 3.2: Call pan-cancer signatures
 # This part is done offline on a computer with a GPU by using Python and Pytorch.
-SCRIPTPATH="/Users/drews01/phd/prjcts/cnsigs2/finalScripts/SignatureAnalyzer-GPU/SignatureAnalyzer-GPU.py"
-INPUTMATRIX="/Users/drews01/phd/prjcts/cnsigs2/data/${CHAPTER2FOLDER}/3_CxS_uninfPrior.txt"
+# See the "Denovo_Signature_Discovery" part of the repo for more details.
+NMFPATH="/Users/drews01/SignatureDiscovery/Denovo_Signature_Discovery"
+SCRIPTPATH="${NMFPATH}/SignatureAnalyzer-GPU/SignatureAnalyzer-GPU.py"
+INPUTMATRIX="${DATA}/${CHAPTER2FOLDER}/3_CxS_uninfPrior.txt"
 MAXITER=100000
 K0=50
-OUTPUTDIR="/Users/drews01/phd/prjcts/cnsigs2/data/${CHAPTER2FOLDER}/4_NMF_CxS_K0-${K0}"
+OUTPUTDIR="${DATA}/${CHAPTER2FOLDER}/4_NMF_CxS_K0-${K0}"
 REGULARISATIONS="--prior_on_W L1 --prior_on_H L1"
 
 ## If you want to seed a different H (signature) matrix.
@@ -411,6 +417,7 @@ sbatch ${SCRIPTS}/33_Decide_Pancancer_Signature.sh $SCRIPTS $PATHTOFILES $SIGMAT
 #### What does it mean? Have a look at page 5 of the summary pdf (the graph with the dots). We chose a solution     ####
 #### which had a signature from each cluster. It might not be the mathematically best solution but it represents    ####
 #### the best out of all runs with K=9.                                                                             ####
+#### For more accessible code and better documentation, see folder "Denovo_Signature_Discovery".                    ####
 ########################################################################################################################
 
 
@@ -438,8 +445,9 @@ sbatch ${SCRIPTS}/41_Find_Suitable_Cancers_and_Split_SxC.sh $SCRIPTS $METADATA $
 # This part is done offline on a computer with a GPU by using Python and Pytorch.
 # Input: Directory with folders containing SxC matrices
 # Output: x runs of BayesNMF
-SCRIPTPATH="/Users/drews01/phd/prjcts/cnsigs2/finalScripts/SignatureAnalyzer-GPU/SignatureAnalyzer-GPU.py"
-PATHTOFILES="/Users/drews01/phd/prjcts/cnsigs2/data/${CHAPTER4FOLDER}"
+NMFPATH="/Users/drews01/SignatureDiscovery/Denovo_Signature_Discovery"
+SCRIPTPATH="${NMFPATH}/SignatureAnalyzer-GPU/SignatureAnalyzer-GPU.py"
+PATHTOFILES="${DATA}/${CHAPTER4FOLDER}"
 # BayesNMF and ARD suggest V=WH => W being the dictionary and H the activation matrix
 MATRIX="3_CxS"
 ALLCANCERS=`ls $PATHTOFILES | grep -Ev ".txt|.rds"`
@@ -498,7 +506,7 @@ TRANSPOSED=FALSE
 DECISION="div"
 ALLK="1 2"
 METADATA="${DATA}/metadata/Metadata_TCGA_ASCAT_penalty70.txt"
-CANCERCOLS="${DATA}/metadata/TCGA_colour_scheme_Lydia.txt"
+CANCERCOLS="${DATA}/metadata/TCGA_colour_scheme.txt"
 
 for WHICHK in $ALLK; do
 
@@ -521,6 +529,7 @@ done
 #### which had a signature from each cluster. It might not be the mathematically best solution but it represents    ####
 #### the best out of all runs with that K. Sometimes chosing the second best K to reach more stable solutions.      ####
 #### Have a look at the "all_Solutions" file which documents the order of best solutions.                           ####
+#### For more accessible code and better documentation, see folder "Denovo_Signature_Discovery".                    ####
 ########################################################################################################################
 
 
@@ -542,7 +551,7 @@ CHAPTER5FOLDER="5_Signature_Compendium"
 # Output:
 # Plots comparing pancancer and cancer-specific signatures
 # A set of cancer-related signatures
-ID="KRJ5F9"
+ID="KRJ5F9" ## This needs replacement if you run your own signatures.
 PANCANCERSIGS="${DATA}/${CHAPTER2FOLDER}/4_Signatures_${ID}_normalised.rds"
 PANCANCEREXP="${DATA}/${CHAPTER2FOLDER}/4_Exposures_${ID}.rds"
 PATHCANCERSPECIFIC="${DATA}/${CHAPTER4FOLDER}"
@@ -552,7 +561,7 @@ OUTDIR="${DATA}/${CHAPTER5FOLDER}"
 # To determine a sensible threshold, please have a look at Cosine_Thresh_CS_PC_Merge_Analysis.R which simulated signature compendiums and
 # then estimates a threshold.
 COSINETHRESH=0.74
-CANCERCOLS="${DATA}/metadata/TCGA_colour_scheme_Lydia.txt"
+CANCERCOLS="${DATA}/metadata/TCGA_colour_scheme.txt"
 SOURCEFUNCTIONS="${SCRIPTS}/51_Combine_PC_and_CS_Signatures_functions.R"
 
 sbatch ${SCRIPTS}/51_Combine_PC_and_CS_Signatures.sh $SCRIPTS $PANCANCERSIGS $PANCANCEREXP $PATHCANCERSPECIFIC $PATTERNSIGS \
@@ -586,12 +595,10 @@ MIXMODELSTCGA="${DATA}/${CHAPTER2FOLDER}/2_combined_mixmodels_merged_components.
 SIGDEFSTCGA="${DATA}/${CHAPTER5FOLDER}/2_Signature_Compendium_Cosine-${COSINETHRESH}.rds"
 EXPTCGATCGA="${DATA}/${CHAPTER5FOLDER}/3_Exposures_Signature_Compendium_Cosine-${COSINETHRESH}.rds"
 
-MIXMODELSOV="${DATA}/Geoffs_data/component_parameters.rds"
-SIGDEFSOV="${DATA}/Geoffs_data/feat_sig_mat.rds"
-EXPOVTCGA="${DATA}/${CHAPTER1FOLDER}/Export-matrix_OV_Sigs_on_TCGA-OV_12112019.rds"
+MIXMODELSOV="${DATA}/Macintyre2018/data/component_parameters.rds"
+SIGDEFSOV="${DATA}/Macintyre2018/data/feat_sig_mat.rds"
+EXPOVTCGA="${DATA}/${CHAPTER1FOLDER}/Export-matrix_OV_Sigs_on_TCGA-OV_03172022.rds"
 
-# This threshold for display purposes only -> Also derived with Cosine_Thresh_CS_PC_Merge_Analysis.R based on OV sigs and 36 components
-# That's why it's higher.
 THRESHOLD=0.85
 NOCN=TRUE
 RESULTSFILE="${BASE}/results/Signature_Compendium_v5_Cosine-${COSINETHRESH}"
