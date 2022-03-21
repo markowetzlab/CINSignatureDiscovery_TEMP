@@ -1,1 +1,0 @@
-python inferMixtures.py ~/Data/project-ruben/tcga_filtered/changepoint.csv > tcga_filtered-changepoint_4_10000.csv

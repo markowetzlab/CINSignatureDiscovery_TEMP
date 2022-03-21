@@ -165,7 +165,7 @@ sbatch ${SCRIPTS}/22_Plot_ECNF.sh $SCRIPTMARKDOWN $INPUTECNF $OUTPATH
 
 
 
-### Step 2.3: Fit mixture models
+### Step 2.3A: Fit mixture models (Finite Mixture Models in R)
 ###
 ### Important notes on the different mixture model fits!
 ###
@@ -268,6 +268,28 @@ for ITER in $(seq 1 $ITERS); do
 done
 
 
+### Step 2.3B: Fit mixture models (Variational Inference DPGMM in Python)
+## Extract feature distributions
+INPUTECNF="${DATA}/${CHAPTER2FOLDER}/1_tcga_filtered_ecnf.rds"
+OUTPATH="${DATA}/${CHAPTER2FOLDER}"
+
+Rscript --vanilla ${SCRIPTS}/23B_Preparation_Extract_Distributions.R $INPUTECNF $OUTPATH
+
+
+## Run viMixtures (currently not opmtised for HPC usage)
+# Use the spec-file.txt in scripts/viMixtures/ to create the proper
+# conda environment to run the Python script
+# conda create --name vidpgmm --file ${SCRIPTS}/viMixtures/spec-file.txt
+# Then afterwards, run:
+# conda activate vidpgmm
+INPUTSS="${DATA}/${CHAPTER2FOLDER}/1_tcga_segmentsize_dist.csv"
+OUTPUT="${DATA}/${CHAPTER2FOLDER}/2_VI_DPGMMs"
+mkdir -p $OUTPUT
+python ${SCRIPTS}/viMixtures/inferMixtures.py $INPUTSS > ${OUTPUT}/tcga_changepoint_4_5000.csv
+
+INPUTCP="${DATA}/${CHAPTER2FOLDER}/1_tcga_changepoint_dist.csv"
+python ${SCRIPTS}/viMixtures/inferMixtures.py $INPUTCP > ${OUTPUT}/tcga_segsize_4_10000.csv
+
 
 ### Step 2.4: Chose optimal mixture models
 # Input: 5 directories
@@ -291,8 +313,10 @@ sbatch ${SCRIPTS}/24_Combine_Mix_Model_Solutions.sh $SCRIPTS $INPUT $FOLDERS $DI
 # Merging criteria:
 # - Closer than 1MB for medium- and large-size elements OR roughly 10% of size OR strong overlap due to large SDs.
 # - For CN roughly closer than 0.1.
-# See Supplementary Table XX!
-# See scripts/viMixtures/Replace_Mixture_Components.R for code
+# See Supplementary Table XX! and then replace manually components from the
+# original mixture components with the newly identified merged mixture compontents
+
+
 
 
 
