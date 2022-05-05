@@ -313,9 +313,13 @@ sbatch ${SCRIPTS}/24_Combine_Mix_Model_Solutions.sh $SCRIPTS $INPUT $FOLDERS $DI
 # Merging criteria:
 # - Closer than 1MB for medium- and large-size elements OR roughly 10% of size OR strong overlap due to large SDs.
 # - For CN roughly closer than 0.1.
-# See Supplementary Table XX! and then replace manually components from the
+# See Supplementary Table 15 and then manually replace components from the
 # original mixture components with the newly identified merged mixture compontents
 
+# Run this script and the mixture components get automatically replaced to the version used in the paper.
+INPUT="${DATA}/${CHAPTER2FOLDER}/2_combined_mixmodels_5k.rds"
+OUTPUT="${DATA}/${CHAPTER2FOLDER}/2_combined_mixmodels_merged_components.rds"
+Rscript --vanilla ${SCRIPTS}/helper_scripts/Replace_Mixture_Components.R $INPUT $OUTPUT
 
 
 
